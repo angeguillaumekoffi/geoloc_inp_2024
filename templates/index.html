@@ -1,0 +1,80 @@
+{% load static %}
+{% load leaflet_tags %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    {% leaflet_js %}
+    {% leaflet_css %}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+    <script src="{% static 'leaflet.ajax.min.js' %}" type="text/javascript"></script>
+    <link rel="stylesheet" href="{% static 'leaflet-routing-machine.css' %}" />
+    <title>Document</title>
+    <style>
+        #map { height: 90vh; }
+    </style>
+</head>
+<body>
+    <h1>CURRENTLY IN INDEX VEHICULE :: {{ latitude }} |  {{ longitude }}</h1>
+    <script src="{% static 'leaflet-routing-machine.js' %}"></script>
+    <script>
+        // Fonction quui affiche le marqueur sur la carte
+        function displayVehicle(zeMap, zeLayer, latitude, longitude){
+            const zeVehiculeLocation = zeLayer.marker([latitude, longitude]);
+            zeMap.setView([latitude, longitude]);
+            zeMap.addLayer(zeVehiculeLocation);
+            return zeVehiculeLocation;
+        }
+
+        // Fonction qui retire un marqueur de la carte
+        function removeVehicle(zeMap, zeVehiculeLocation){
+            zeMap.removeLayer(zeVehiculeLocation)
+        }
+
+        // Fonction qui recupère les coordonnées géo depuis le serveur de données
+        async function getLocation(matricule) {
+            const reponse = await fetch("location/"+matricule);
+            const newVehicule = await reponse.json();
+            return newVehicule;
+        }
+
+        // Fonction qui simule le mode temps réel
+        function realTime(zeMap, zeLayer){
+            var vehiculeLocation;
+            setInterval(async () => {
+                if (!!vehiculeLocation){
+                    removeVehicle(zeMap, vehiculeLocation);
+                }
+                var vehicule = JSON.parse(await getLocation('5201AF'));
+                var latitude = Number(vehicule.latitude);
+                var longitude = Number(vehicule.longitude);
+                vehiculeLocation = displayVehicle(zeMap, zeLayer, latitude, longitude);
+            }, 1000);
+        }
+
+        // Fonction qui réalise le mode routage entre deux points
+        async function routage(zeMap, zeLayer) {
+            var vehicule = JSON.parse(await getLocation('5201AF'));
+            var latitude = Number(vehicule.latitude);
+            var longitude = Number(vehicule.longitude);
+            zeLayer.Routing.control({
+                waypoints: [
+                    zeLayer.latLng(6.8699291, -5.2394188),
+                    zeLayer.latLng(latitude, longitude)
+                ],
+                routeWhileDragging: true
+            }).addTo(zeMap);
+        }
+
+        // Fonction de depart du programme map
+        function index_map(map, options){
+            map.setView([6.8699291, -5.2394188], 7);
+            realTime(map, L);
+            //routage(map, L);
+        }
+    </script>
+    {% leaflet_map "map" callback="window.index_map" %}
+</body>
+</html>
